@@ -1,0 +1,24 @@
+--- a/src/fwtpm/fwtpm_io.c
++++ b/src/fwtpm/fwtpm_io.c
+@@ -61,6 +61,7 @@
+ #ifndef _WIN32
+ #include <sys/select.h>
+ #include <arpa/inet.h>
++#include <netinet/tcp.h>
+ #endif
+ 
+ /* Async-signal-safe stop flag. Set by FWTPM_IO_RequestStop() (callable from
+@@ -792,6 +793,13 @@
+         if (FD_ISSET(ctx->io.listenFd, &readFds)) {
+             SOCKET_T newFd = accept(ctx->io.listenFd, NULL, NULL);
+             if (newFd != FWTPM_INVALID_FD) {
++                int noDelay = 1;
++                if (setsockopt(newFd, IPPROTO_TCP, TCP_NODELAY,
++                        (const char*)&noDelay, sizeof(noDelay)) != 0) {
++                    fprintf(stderr, "fwTPM: TCP_NODELAY failed\n");
++                    CloseSocket(newFd);
++                    continue;
++                }
+                 for (i = 0; i < FWTPM_MAX_COMMAND_CLIENTS; i++) {
+                     if (cmdFds[i] == FWTPM_INVALID_FD) {
+                         cmdFds[i] = newFd;
